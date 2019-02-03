@@ -1,0 +1,29 @@
+restic:
+  repositories:
+    - repository: b1
+      path: /srv/dev-disk-by-label-backup/b1
+      password: 
+
+  backups:
+    - backup: jan
+      repository: b1
+      source: /srv/dev-disk-by-label-files1/jan/
+      exclude: [no_backup/**, no_backup/*]
+
+  forget:
+    - repository: b1
+      prune: false
+      #keep-last: 30
+      #keep-hourly: 1
+      keep-daily: 30
+      keep-weekly: 12
+      keep-monthly: 12
+      keep-yearly: 10
+      #keep-tag: [test, test2]
+
+
+rclone:
+  copy:
+    - source: /srv/dev-disk-by-label-backup/b1
+      destination: b2jan:arens-backup/b1
+      bw-limit: 08:00,600 23:00,off
