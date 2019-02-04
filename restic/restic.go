@@ -194,5 +194,5 @@ func (r *Restic) execute(arguments []string, password string) error {
 	command.Env = append(os.Environ(), fmt.Sprintf("RESTIC_PASSWORD=%s", password))
 	err := command.Run()
 
-	return errors.Wrap(err, "Restic exec failed")
+	return errors.Wrap(err, "restic exec failed")
 }
