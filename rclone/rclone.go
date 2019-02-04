@@ -28,10 +28,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Config contains the information on all actions that should be performed
 type Config struct {
 	Copy []Copy `mapstructure:"copy"`
 }
 
+// Copy represents a single rclone copy job
 type Copy struct {
 	Source          string `mapstructure:"source"`
 	Destination     string `mapstructure:"destination"`
@@ -39,14 +41,17 @@ type Copy struct {
 	ContinueOnError bool   `mapstructure:"continue-on-error"`
 }
 
+// Rclone is a CLI wrapper
 type Rclone struct {
 	config *Config
 }
 
+// New creates a Rclone wrapper instance for the provided config
 func New(conf *Config) Rclone {
 	return Rclone{config: conf}
 }
 
+// Run the configured rclone jobs
 func (r *Rclone) Run() error {
 	for _, v := range r.config.Copy {
 		err := r.runCopy(v)

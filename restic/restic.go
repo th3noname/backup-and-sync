@@ -31,18 +31,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Config contains the information on all actions that should be performed
 type Config struct {
 	Repositoies []Repository `mapstructure:"repositories"`
 	Backup      []Backup     `mapstructure:"backups"`
 	Forget      []Forget     `mapstructure:"forget"`
 }
 
+// Repository stores information on a restic repository
 type Repository struct {
 	Repository string `mapstructure:"repository"`
 	Path       string `mapstructure:"path"`
 	Password   string `mapstructure:"password"`
 }
 
+// Backup represents a single restic backup job
 type Backup struct {
 	Backup          string   `mapstructure:"backup"`
 	Repository      string   `mapstructure:"repository"`
@@ -51,6 +54,7 @@ type Backup struct {
 	ContinueOnError bool     `mapstructure:"continue-on-error"`
 }
 
+// Forget represents a single restic forget job
 type Forget struct {
 	Repository      string   `mapstructure:"repository"`
 	Prune           bool     `mapstructure:"prune"`
@@ -66,14 +70,17 @@ type Forget struct {
 	ContinueOnError bool     `mapstructure:"continue-on-error"`
 }
 
+// Restic is a CLI wrapper
 type Restic struct {
 	config *Config
 }
 
+// New creates a Restic wrapper instance for the provided config
 func New(conf *Config) Restic {
 	return Restic{config: conf}
 }
 
+// Run the configured restic jobs
 func (r *Restic) Run() error {
 	var err error
 
