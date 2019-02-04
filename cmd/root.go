@@ -39,17 +39,16 @@ var rootCmd = &cobra.Command{
 	Short: "Backup directories using restic and sync folders using rclone",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		var resticConf restic.Config
-		var rcloneConf rclone.Config
-
 		if viper.IsSet("restic") {
-			err := viper.UnmarshalKey("restic", &resticConf)
+			var resticConf *restic.Config
+
+			err := viper.UnmarshalKey("restic", resticConf)
 			if err != nil {
 				log.WithError(err).Error("Unmarshal restic configuration failed")
 				return
 			}
 
-			r := restic.New(&resticConf)
+			r := restic.New(resticConf)
 			err = r.Run()
 			if err != nil {
 				log.WithError(err).Error("restic execution failed")
@@ -58,13 +57,14 @@ var rootCmd = &cobra.Command{
 		}
 
 		if viper.IsSet("rclone") {
-			err = viper.UnmarshalKey("rclone", &rcloneConf)
+			var rcloneConf *rclone.Config
+
+			err = viper.UnmarshalKey("rclone", rcloneConf)
 			if err != nil {
 				log.WithError(err).Error("Unmarshal rclone configuration failed")
 				return
 			}
 		}
-
 	},
 }
 
