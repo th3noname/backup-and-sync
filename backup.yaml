@@ -9,6 +9,7 @@ restic:
       repository: b1
       source: /srv/dev-disk-by-label-files1/jan/
       exclude: [no_backup/**, no_backup/*]
+      continue-on-error: true
 
   forget:
     - repository: b1
@@ -20,6 +21,9 @@ restic:
       keep-monthly: 12
       keep-yearly: 10
       #keep-tag: [test, test2]
+      #tag: [tag1, tag2]
+      #hostname: testhost
+      continue-on-error: true
 
 
 rclone:

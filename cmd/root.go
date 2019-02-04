@@ -42,19 +42,29 @@ var rootCmd = &cobra.Command{
 		var resticConf restic.Config
 		var rcloneConf rclone.Config
 
-		err := viper.UnmarshalKey("restic", &resticConf)
-		if err != nil {
-			log.WithError(err).Error("Unmarshal restic configuration failed")
-			return
+		if viper.IsSet("restic") {
+			err := viper.UnmarshalKey("restic", &resticConf)
+			if err != nil {
+				log.WithError(err).Error("Unmarshal restic configuration failed")
+				return
+			}
+
+			r := restic.New(&resticConf)
+			err = r.Run()
+			if err != nil {
+				log.WithError(err).Error("restic execution failed")
+				return
+			}
 		}
 
-		err = viper.UnmarshalKey("rclone", &rcloneConf)
-		if err != nil {
-			log.WithError(err).Error("Unmarshal rclone configuration failed")
-			return
+		if viper.IsSet("rclone") {
+			err = viper.UnmarshalKey("rclone", &rcloneConf)
+			if err != nil {
+				log.WithError(err).Error("Unmarshal rclone configuration failed")
+				return
+			}
 		}
 
-		log.Printf("Config: %v", rcloneConf)
 	},
 }
 

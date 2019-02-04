@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -42,22 +44,26 @@ type Repository struct {
 }
 
 type Backup struct {
-	Backup     string   `mapstructure:"backup"`
-	Repository string   `mapstructure:"repository"`
-	Source     string   `mapstructure:"source"`
-	Exclude    []string `mapstructure:"no_backup"`
+	Backup          string   `mapstructure:"backup"`
+	Repository      string   `mapstructure:"repository"`
+	Source          string   `mapstructure:"source"`
+	Exclude         []string `mapstructure:"no_backup"`
+	ContinueOnError bool     `mapstructure:"continue-on-error"`
 }
 
 type Forget struct {
-	Repository  string   `mapstructure:"repository"`
-	Prune       bool     `mapstructure:"prune"`
-	KeepLast    int      `mapstructure:"keep-last"`
-	KeepHourly  int      `mapstructure:"keep-hourly"`
-	KeepDaily   int      `mapstructure:"keep-daily"`
-	KeepWeekly  int      `mapstructure:"keep-weekly"`
-	KeepMonthly int      `mapstructure:"keep-monthly"`
-	KeepYearly  int      `mapstructure:"keep-yearly"`
-	KeepTag     []string `mapstructure:"keep-tag"`
+	Repository      string   `mapstructure:"repository"`
+	Prune           bool     `mapstructure:"prune"`
+	KeepLast        int      `mapstructure:"keep-last"`
+	KeepHourly      int      `mapstructure:"keep-hourly"`
+	KeepDaily       int      `mapstructure:"keep-daily"`
+	KeepWeekly      int      `mapstructure:"keep-weekly"`
+	KeepMonthly     int      `mapstructure:"keep-monthly"`
+	KeepYearly      int      `mapstructure:"keep-yearly"`
+	KeepTag         []string `mapstructure:"keep-tag"`
+	Tag             []string `mapstructure:"tag"`
+	Hostname        string   `mapstructure:"hostname"`
+	ContinueOnError bool     `mapstructure:"continue-on-error"`
 }
 
 type Restic struct {
@@ -75,7 +81,11 @@ func (r *Restic) Run() error {
 		err = r.runBackup(v)
 
 		if err != nil {
-			return errors.Wrap(err, "runBackup failed")
+			if v.ContinueOnError {
+				log.WithError(err).Warnf("Backup job \"%s\" failed. Continuing...", v.Backup)
+			} else {
+				return errors.Wrap(err, "runBackup failed")
+			}
 		}
 	}
 
@@ -83,7 +93,11 @@ func (r *Restic) Run() error {
 		err = r.runForget(v)
 
 		if err != nil {
-			return errors.Wrap(err, "runForget failed")
+			if v.ContinueOnError {
+				log.WithError(err).Warnf("Forget job \"%s\" failed. Continuing...", v.Repository)
+			} else {
+				return errors.Wrap(err, "runForget failed")
+			}
 		}
 	}
 
@@ -93,25 +107,72 @@ func (r *Restic) Run() error {
 func (r *Restic) runBackup(b Backup) error {
 	repo, exists := r.repository(b.Repository)
 	if !exists {
-		return errors.New(fmt.Sprintf("repository \"%s\" does not exist", b.Repository))
+		return errors.Errorf("repository \"%s\" does not exist", b.Repository)
 	}
 
 	args := []string{"backup"}
+	args = append(args, b.Source)
+	args = append(args, "--repo", repo.Path)
 
 	for _, v := range b.Exclude {
-		args = append(args, "--exclude", v)
+		args = append(args, "--exclude", fmt.Sprintf("\"%s\"", v))
 	}
 
-	args = append(args, "--repo", repo.Path)
-	args = append(args, b.Source)
-
 	err := r.execute(args, repo.Password)
-
 	return errors.Wrap(err, "execute failed")
 }
 
 func (r *Restic) runForget(f Forget) error {
+	repo, exists := r.repository(f.Repository)
+	if !exists {
+		return errors.Errorf("repository \"%s\" does not exist", f.Repository)
+	}
 
+	args := []string{"forget"}
+	args = append(args, "--repo", repo.Path)
+
+	if f.Hostname != "" {
+		args = append(args, "--hostname", f.Hostname)
+	}
+
+	if f.KeepLast > 0 {
+		args = append(args, "--keep-last", strconv.Itoa(f.KeepLast))
+	}
+
+	if f.KeepHourly > 0 {
+		args = append(args, "--keep-hourly", strconv.Itoa(f.KeepHourly))
+	}
+
+	if f.KeepDaily > 0 {
+		args = append(args, "--keep-daily", strconv.Itoa(f.KeepDaily))
+	}
+
+	if f.KeepWeekly > 0 {
+		args = append(args, "--keep-weekly", strconv.Itoa(f.KeepWeekly))
+	}
+
+	if f.KeepMonthly > 0 {
+		args = append(args, "--keep-monthly", strconv.Itoa(f.KeepMonthly))
+	}
+
+	if f.KeepYearly > 0 {
+		args = append(args, "--keep-yearly", strconv.Itoa(f.KeepYearly))
+	}
+
+	if len(f.KeepTag) > 0 {
+		args = append(args, "--keep-tag", strings.Join(f.KeepTag, ","))
+	}
+
+	if len(f.Tag) > 0 {
+		args = append(args, "--tag", strings.Join(f.Tag, ","))
+	}
+
+	if f.Prune {
+		args = append(args, "--prune")
+	}
+
+	err := r.execute(args, repo.Password)
+	return errors.Wrap(err, "execute failed")
 }
 
 func (r *Restic) repository(key string) (repo Repository, exists bool) {
