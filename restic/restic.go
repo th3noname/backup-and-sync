@@ -50,7 +50,7 @@ type Backup struct {
 	Backup          string   `mapstructure:"backup"`
 	Repository      string   `mapstructure:"repository"`
 	Source          string   `mapstructure:"source"`
-	Exclude         []string `mapstructure:"no_backup"`
+	Exclude         []string `mapstructure:"exclude"`
 	ContinueOnError bool     `mapstructure:"continue-on-error"`
 }
 
@@ -129,7 +129,7 @@ func (r *Restic) runBackup(b Backup) error {
 	args = append(args, "--repo", repo.Path)
 
 	for _, v := range b.Exclude {
-		args = append(args, "--exclude", fmt.Sprintf("\"%s\"", v))
+		args = append(args, "--exclude", v)
 	}
 
 	err := r.execute(args, repo.Password)
