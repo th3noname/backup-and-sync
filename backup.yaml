@@ -31,3 +31,4 @@ rclone:
     - source: /srv/dev-disk-by-label-backup/b1
       destination: b2jan:arens-backup/b1
       bw-limit: 08:00,600 23:00,off
+      continue-on-error: true

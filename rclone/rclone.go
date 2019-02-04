@@ -20,12 +20,70 @@
 
 package rclone
 
+import (
+	"os"
+	"os/exec"
+
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+)
+
 type Config struct {
 	Copy []Copy `mapstructure:"copy"`
 }
 
 type Copy struct {
-	Source      string `mapstructure:"source"`
-	Destination string `mapstructure:"destination"`
-	BwLimit     string `mapstructure:"bw-limit"`
+	Source          string `mapstructure:"source"`
+	Destination     string `mapstructure:"destination"`
+	BwLimit         string `mapstructure:"bw-limit"`
+	ContinueOnError bool   `mapstructure:"continue-on-error"`
+}
+
+type Rclone struct {
+	config *Config
+}
+
+func New(conf *Config) Rclone {
+	return Rclone{config: conf}
+}
+
+func (r *Rclone) Run() error {
+	for _, v := range r.config.Copy {
+		err := r.runCopy(v)
+
+		if v.ContinueOnError {
+			log.WithError(err).WithFields(log.Fields{
+				"source":      v.Source,
+				"destination": v.Destination,
+			}).Warn("copy job failed. Continuing...")
+		} else {
+			return errors.Wrap(err, "runCopy failed")
+		}
+	}
+
+	return nil
+}
+
+func (r *Rclone) runCopy(c Copy) error {
+	args := []string{"copy"}
+	args = append(args, c.Source)
+	args = append(args, c.Destination)
+
+	if c.BwLimit != "" {
+		args = append(args, "--bwlimit", c.BwLimit)
+	}
+
+	err := r.execute(args)
+	return errors.Wrap(err, "execute failed")
+}
+
+func (r *Rclone) execute(arguments []string) error {
+	log.WithField("arguments", arguments).Info("Executing rclone command")
+
+	command := exec.Command("rclone", arguments...)
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	err := command.Run()
+
+	return errors.Wrap(err, "rclone exec failed")
 }
