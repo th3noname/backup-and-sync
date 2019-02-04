@@ -112,6 +112,13 @@ func (r *Restic) Run() error {
 }
 
 func (r *Restic) runBackup(b Backup) error {
+	log.WithFields(log.Fields{
+		"backup":     b.Backup,
+		"repository": b.Repository,
+		"source":     b.Source,
+		"exclude":    b.Exclude,
+	}).Info("start runBackup")
+
 	repo, exists := r.repository(b.Repository)
 	if !exists {
 		return errors.Errorf("repository \"%s\" does not exist", b.Repository)
@@ -126,6 +133,8 @@ func (r *Restic) runBackup(b Backup) error {
 	}
 
 	err := r.execute(args, repo.Password)
+
+	log.Info("end runBackup")
 	return errors.Wrap(err, "execute failed")
 }
 
