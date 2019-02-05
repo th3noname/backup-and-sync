@@ -56,13 +56,15 @@ func (r *Rclone) Run() error {
 	for _, v := range r.config.Copy {
 		err := r.runCopy(v)
 
-		if v.ContinueOnError {
-			log.WithError(err).WithFields(log.Fields{
-				"source":      v.Source,
-				"destination": v.Destination,
-			}).Warn("copy job failed. Continuing...")
-		} else {
-			return errors.Wrap(err, "runCopy failed")
+		if err != nil {
+			if v.ContinueOnError {
+				log.WithError(err).WithFields(log.Fields{
+					"source":      v.Source,
+					"destination": v.Destination,
+				}).Warn("copy job failed. Continuing...")
+			} else {
+				return errors.Wrap(err, "runCopy failed")
+			}
 		}
 	}
 
