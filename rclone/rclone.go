@@ -75,6 +75,8 @@ func (r *Rclone) runCopy(c Copy) error {
 	args := []string{"copy"}
 	args = append(args, c.Source)
 	args = append(args, c.Destination)
+	args = append(args, "--stats-log-level", "NOTICE")
+	args = append(args, "--stats", "1m")
 
 	if c.BwLimit != "" {
 		args = append(args, "--bwlimit", c.BwLimit)
@@ -87,9 +89,11 @@ func (r *Rclone) runCopy(c Copy) error {
 func (r *Rclone) execute(arguments []string) error {
 	log.WithField("arguments", arguments).Info("Executing rclone command")
 
+	w := log.StandardLogger().Writer()
+
 	command := exec.Command("rclone", arguments...)
 	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
+	command.Stderr = w
 	err := command.Run()
 
 	return errors.Wrap(err, "rclone exec failed")
