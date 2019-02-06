@@ -28,17 +28,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type job interface {
+	run() error
+	name() string
+	continueOnError() bool
+	logFields() log.Fields
+}
+
 // Config contains the information on all actions that should be performed
 type Config struct {
 	Copy []Copy `mapstructure:"copy"`
-}
-
-// Copy represents a single rclone copy job
-type Copy struct {
-	Source          string `mapstructure:"source"`
-	Destination     string `mapstructure:"destination"`
-	BwLimit         string `mapstructure:"bw-limit"`
-	ContinueOnError bool   `mapstructure:"continue-on-error"`
+	Sync []Sync `mapstructure:"sync"`
 }
 
 // Rclone is a CLI wrapper
@@ -54,39 +54,40 @@ func New(conf *Config) Rclone {
 // Run the configured rclone jobs
 func (r *Rclone) Run() error {
 	for _, v := range r.config.Copy {
-		err := r.runCopy(v)
+		err := r.callJob(&v)
 
 		if err != nil {
-			if v.ContinueOnError {
-				log.WithError(err).WithFields(log.Fields{
-					"source":      v.Source,
-					"destination": v.Destination,
-				}).Warn("copy job failed. Continuing...")
-			} else {
-				return errors.Wrap(err, "runCopy failed")
-			}
+			return err
+		}
+	}
+
+	for _, v := range r.config.Sync {
+		err := r.callJob(&v)
+
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func (r *Rclone) runCopy(c Copy) error {
-	args := []string{"copy"}
-	args = append(args, c.Source)
-	args = append(args, c.Destination)
-	args = append(args, "--stats-log-level", "NOTICE")
-	args = append(args, "--stats", "1m")
+func (r *Rclone) callJob(j job) error {
+	err := j.run()
 
-	if c.BwLimit != "" {
-		args = append(args, "--bwlimit", c.BwLimit)
+	if err != nil {
+		if j.continueOnError() {
+			log.WithError(err).WithFields(j.logFields()).Warnf("run %s job failed. Continuing...", j.name())
+			return nil
+		}
+
+		return errors.Wrapf(err, "run %s job failed", j.name())
 	}
 
-	err := r.execute(args)
-	return errors.Wrap(err, "execute failed")
+	return nil
 }
 
-func (r *Rclone) execute(arguments []string) error {
+func execute(arguments []string) error {
 	log.WithField("arguments", arguments).Info("Executing rclone command")
 
 	w := log.StandardLogger().Writer()
@@ -97,4 +98,80 @@ func (r *Rclone) execute(arguments []string) error {
 	err := command.Run()
 
 	return errors.Wrap(err, "rclone exec failed")
+}
+
+// Copy represents a single rclone copy job
+type Copy struct {
+	Source          string `mapstructure:"source"`
+	Destination     string `mapstructure:"destination"`
+	BwLimit         string `mapstructure:"bw-limit"`
+	ContinueOnError bool   `mapstructure:"continue-on-error"`
+}
+
+func (c *Copy) name() string {
+	return "copy"
+}
+
+func (c *Copy) continueOnError() bool {
+	return c.ContinueOnError
+}
+
+func (c *Copy) logFields() log.Fields {
+	return log.Fields{
+		"source":      c.Source,
+		"destination": c.Destination,
+	}
+}
+
+func (c *Copy) run() error {
+	args := []string{c.name()}
+	args = append(args, c.Source)
+	args = append(args, c.Destination)
+	args = append(args, "--stats-log-level", "NOTICE")
+	args = append(args, "--stats", "1m")
+
+	if c.BwLimit != "" {
+		args = append(args, "--bwlimit", c.BwLimit)
+	}
+
+	err := execute(args)
+	return errors.Wrap(err, "execute failed")
+}
+
+// Sync represents a single rclone copy job
+type Sync struct {
+	Source          string `mapstructure:"source"`
+	Destination     string `mapstructure:"destination"`
+	BwLimit         string `mapstructure:"bw-limit"`
+	ContinueOnError bool   `mapstructure:"continue-on-error"`
+}
+
+func (s *Sync) name() string {
+	return "sync"
+}
+
+func (s *Sync) continueOnError() bool {
+	return s.ContinueOnError
+}
+
+func (s *Sync) logFields() log.Fields {
+	return log.Fields{
+		"source":      s.Source,
+		"destination": s.Destination,
+	}
+}
+
+func (s *Sync) run() error {
+	args := []string{s.name()}
+	args = append(args, s.Source)
+	args = append(args, s.Destination)
+	args = append(args, "--stats-log-level", "NOTICE")
+	args = append(args, "--stats", "1m")
+
+	if s.BwLimit != "" {
+		args = append(args, "--bwlimit", s.BwLimit)
+	}
+
+	err := execute(args)
+	return errors.Wrap(err, "execute failed")
 }

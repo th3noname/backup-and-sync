@@ -31,6 +31,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type job interface {
+	run(Repository) error
+	name() string
+	continueOnError() bool
+	logFields() log.Fields
+	repoID() string
+}
+
 // Config contains the information on all actions that should be performed
 type Config struct {
 	Repositoies []Repository `mapstructure:"repositories"`
@@ -45,6 +53,84 @@ type Repository struct {
 	Password   string `mapstructure:"password"`
 }
 
+// Restic is a CLI wrapper
+type Restic struct {
+	config *Config
+}
+
+// New creates a Restic wrapper instance for the provided config
+func New(conf *Config) Restic {
+	return Restic{config: conf}
+}
+
+// Run the configured restic jobs
+func (r *Restic) Run() error {
+	for _, v := range r.config.Backup {
+		err := r.callJob(&v)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, v := range r.config.Forget {
+		err := r.callJob(&v)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *Restic) callJob(j job) error {
+	repo, exists := r.repository(j.repoID())
+	if !exists {
+		if j.continueOnError() {
+			log.WithFields(j.logFields()).Warnf("run %s job failed. repository \"%s\" does not exist. Continuing...", j.name(), j.repoID())
+			return nil
+		}
+
+		return errors.Errorf("run %s job failed. repository \"%s\" does not exist", j.name(), j.repoID())
+	}
+
+	err := j.run(repo)
+
+	if err != nil {
+		if j.continueOnError() {
+			log.WithError(err).WithFields(j.logFields()).Warnf("run %s job failed. Continuing...", j.name())
+			return nil
+		}
+
+		return errors.Wrapf(err, "run %s job failed", j.name())
+	}
+
+	return nil
+}
+
+func (r *Restic) repository(key string) (repo Repository, exists bool) {
+	for _, v := range r.config.Repositoies {
+		if v.Repository == key {
+			return v, true
+		}
+	}
+
+	return Repository{}, false
+}
+
+func execute(arguments []string, password string) error {
+	log.WithField("arguments", arguments).Info("Executing restic command")
+
+	command := exec.Command("restic", arguments...)
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	command.Env = append(os.Environ(), fmt.Sprintf("RESTIC_PASSWORD=%s", password))
+	err := command.Run()
+
+	return errors.Wrap(err, "restic exec failed")
+}
+
 // Backup represents a single restic backup job
 type Backup struct {
 	Backup          string   `mapstructure:"backup"`
@@ -52,6 +138,44 @@ type Backup struct {
 	Source          string   `mapstructure:"source"`
 	Exclude         []string `mapstructure:"exclude"`
 	ContinueOnError bool     `mapstructure:"continue-on-error"`
+}
+
+func (b *Backup) name() string {
+	return "backup"
+}
+
+func (b *Backup) repoID() string {
+	return b.Repository
+}
+
+func (b *Backup) continueOnError() bool {
+	return b.ContinueOnError
+}
+
+func (b *Backup) logFields() log.Fields {
+	return log.Fields{
+		"backup":     b.Backup,
+		"repository": b.Repository,
+		"source":     b.Source,
+		"exclude":    b.Exclude,
+	}
+}
+
+func (b *Backup) run(repo Repository) error {
+	log.WithFields(b.logFields()).Infof("start run %s", b.name())
+
+	args := []string{b.name()}
+	args = append(args, b.Source)
+	args = append(args, "--repo", repo.Path)
+
+	for _, v := range b.Exclude {
+		args = append(args, "--exclude", v)
+	}
+
+	err := execute(args, repo.Password)
+
+	log.Infof("end run %s", b.name())
+	return errors.Wrap(err, "execute failed")
 }
 
 // Forget represents a single restic forget job
@@ -70,81 +194,29 @@ type Forget struct {
 	ContinueOnError bool     `mapstructure:"continue-on-error"`
 }
 
-// Restic is a CLI wrapper
-type Restic struct {
-	config *Config
+func (f *Forget) name() string {
+	return "forget"
 }
 
-// New creates a Restic wrapper instance for the provided config
-func New(conf *Config) Restic {
-	return Restic{config: conf}
+func (f *Forget) repoID() string {
+	return f.Repository
 }
 
-// Run the configured restic jobs
-func (r *Restic) Run() error {
-	var err error
-
-	for _, v := range r.config.Backup {
-		err = r.runBackup(v)
-
-		if err != nil {
-			if v.ContinueOnError {
-				log.WithError(err).Warnf("Backup job \"%s\" failed. Continuing...", v.Backup)
-			} else {
-				return errors.Wrap(err, "runBackup failed")
-			}
-		}
-	}
-
-	for _, v := range r.config.Forget {
-		err = r.runForget(v)
-
-		if err != nil {
-			if v.ContinueOnError {
-				log.WithError(err).Warnf("Forget job \"%s\" failed. Continuing...", v.Repository)
-			} else {
-				return errors.Wrap(err, "runForget failed")
-			}
-		}
-	}
-
-	return nil
+func (f *Forget) continueOnError() bool {
+	return f.ContinueOnError
 }
 
-func (r *Restic) runBackup(b Backup) error {
-	log.WithFields(log.Fields{
-		"backup":     b.Backup,
-		"repository": b.Repository,
-		"source":     b.Source,
-		"exclude":    b.Exclude,
-	}).Info("start runBackup")
-
-	repo, exists := r.repository(b.Repository)
-	if !exists {
-		return errors.Errorf("repository \"%s\" does not exist", b.Repository)
+func (f *Forget) logFields() log.Fields {
+	return log.Fields{
+		"repository": f.Repository,
+		"prune":      f.Prune,
 	}
-
-	args := []string{"backup"}
-	args = append(args, b.Source)
-	args = append(args, "--repo", repo.Path)
-
-	for _, v := range b.Exclude {
-		args = append(args, "--exclude", v)
-	}
-
-	err := r.execute(args, repo.Password)
-
-	log.Info("end runBackup")
-	return errors.Wrap(err, "execute failed")
 }
 
-func (r *Restic) runForget(f Forget) error {
-	repo, exists := r.repository(f.Repository)
-	if !exists {
-		return errors.Errorf("repository \"%s\" does not exist", f.Repository)
-	}
+func (f *Forget) run(repo Repository) error {
+	log.WithFields(f.logFields()).Infof("start run %s", f.name())
 
-	args := []string{"forget"}
+	args := []string{f.name()}
 	args = append(args, "--repo", repo.Path)
 
 	if f.Hostname != "" {
@@ -187,28 +259,8 @@ func (r *Restic) runForget(f Forget) error {
 		args = append(args, "--prune")
 	}
 
-	err := r.execute(args, repo.Password)
+	err := execute(args, repo.Password)
+
+	log.Infof("end run %s", f.name())
 	return errors.Wrap(err, "execute failed")
-}
-
-func (r *Restic) repository(key string) (repo Repository, exists bool) {
-	for _, v := range r.config.Repositoies {
-		if v.Repository == key {
-			return v, true
-		}
-	}
-
-	return Repository{}, false
-}
-
-func (r *Restic) execute(arguments []string, password string) error {
-	log.WithField("arguments", arguments).Info("Executing restic command")
-
-	command := exec.Command("restic", arguments...)
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
-	command.Env = append(os.Environ(), fmt.Sprintf("RESTIC_PASSWORD=%s", password))
-	err := command.Run()
-
-	return errors.Wrap(err, "restic exec failed")
 }
