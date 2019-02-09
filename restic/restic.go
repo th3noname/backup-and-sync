@@ -128,6 +128,10 @@ func execute(arguments []string, password string) error {
 	command.Env = append(os.Environ(), fmt.Sprintf("RESTIC_PASSWORD=%s", password))
 	err := command.Run()
 
+	if err == nil {
+		log.Info("restic exited with return code 0")
+	}
+
 	return errors.Wrap(err, "restic exec failed")
 }
 
@@ -162,7 +166,7 @@ func (b *Backup) logFields() log.Fields {
 }
 
 func (b *Backup) run(repo Repository) error {
-	log.WithFields(b.logFields()).Infof("start run %s", b.name())
+	log.WithFields(b.logFields()).Infof("start run restic %s", b.name())
 
 	args := []string{b.name()}
 	args = append(args, b.Source)
@@ -174,7 +178,7 @@ func (b *Backup) run(repo Repository) error {
 
 	err := execute(args, repo.Password)
 
-	log.Infof("end run %s", b.name())
+	log.Infof("end run restic %s", b.name())
 	return errors.Wrap(err, "execute failed")
 }
 
@@ -214,7 +218,7 @@ func (f *Forget) logFields() log.Fields {
 }
 
 func (f *Forget) run(repo Repository) error {
-	log.WithFields(f.logFields()).Infof("start run %s", f.name())
+	log.WithFields(f.logFields()).Infof("start run restic %s", f.name())
 
 	args := []string{f.name()}
 	args = append(args, "--repo", repo.Path)
@@ -261,6 +265,6 @@ func (f *Forget) run(repo Repository) error {
 
 	err := execute(args, repo.Password)
 
-	log.Infof("end run %s", f.name())
+	log.Infof("end run restic %s", f.name())
 	return errors.Wrap(err, "execute failed")
 }

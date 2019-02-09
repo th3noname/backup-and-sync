@@ -97,6 +97,10 @@ func execute(arguments []string) error {
 	command.Stderr = w
 	err := command.Run()
 
+	if err == nil {
+		log.Info("rclone exited with return code 0")
+	}
+
 	return errors.Wrap(err, "rclone exec failed")
 }
 
@@ -124,6 +128,8 @@ func (c *Copy) logFields() log.Fields {
 }
 
 func (c *Copy) run() error {
+	log.WithFields(c.logFields()).Infof("start run rclone %s", c.name())
+
 	args := []string{c.name()}
 	args = append(args, c.Source)
 	args = append(args, c.Destination)
@@ -135,6 +141,8 @@ func (c *Copy) run() error {
 	}
 
 	err := execute(args)
+
+	log.Infof("end run  rclone %s", c.name())
 	return errors.Wrap(err, "execute failed")
 }
 
@@ -162,6 +170,8 @@ func (s *Sync) logFields() log.Fields {
 }
 
 func (s *Sync) run() error {
+	log.WithFields(s.logFields()).Infof("start run rclone %s", s.name())
+
 	args := []string{s.name()}
 	args = append(args, s.Source)
 	args = append(args, s.Destination)
@@ -173,5 +183,7 @@ func (s *Sync) run() error {
 	}
 
 	err := execute(args)
+
+	log.Infof("end run rclone %s", s.name())
 	return errors.Wrap(err, "execute failed")
 }

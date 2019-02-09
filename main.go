@@ -27,6 +27,9 @@ import (
 	"github.com/th3noname/backup-and-sync/cmd"
 )
 
+// Version information
+const Version = "0.1.0"
+
 func init() {
 	// Log as text.
 	log.SetFormatter(&log.TextFormatter{})
@@ -40,7 +43,9 @@ func init() {
 }
 
 func main() {
-	log.Info("backup-and-sync started")
+	log.Infof("backup-and-sync %s", Version)
 
 	cmd.Execute()
+
+	log.Info("done")
 }
