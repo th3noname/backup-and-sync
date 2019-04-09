@@ -4,8 +4,8 @@ report:
   smtp-user: foo
   smtp-password: bar
   recipients: [foo@bar.com]
-  subject-success: 
-  subject-error:
+  subject-success: '[backup-and-sync][success] backup-and-sync finished successfully'
+  subject-error: '[backup-and-sync][error] backup-and-sync failed'
 
 restic:
   repositories:
