@@ -18,46 +18,40 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+package cmd
 
 import (
-	"os"
-	"strconv"
-	"time"
+	"fmt"
+	"runtime"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/th3noname/backup-and-sync/src/cmd"
+	"github.com/spf13/cobra"
 )
 
-// Version information
-var Version string
-var Commit string
-var Date string
-var GoVersion string
-var BuildMachineOs string
-
-func init() {
-	cmd.Info.Version = Version
-	cmd.Info.Commit = Commit
-
-	if v, err := strconv.Atoi(Date); err == nil {
-		cmd.Info.Date = time.Unix(int64(v), 0).Format("Mon Jan _2 15:04:05 2006")
-	}
-
-	cmd.Info.GoVersion = GoVersion
-	cmd.Info.BuildMachineOs = BuildMachineOs
-
-	// Log as text.
-	log.SetFormatter(&log.TextFormatter{})
-
-	// Output to stdout instead of the default stderr
-	// Can be any io.Writer, see below for File example
-	log.SetOutput(os.Stdout)
-
-	// Only log the info severity or above.
-	log.SetLevel(log.InfoLevel)
+// versionCmd represents the version command
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "show version information",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Version:      %s\n\n", Info.Version)
+		fmt.Printf("Git Commit:   %s\n\n", Info.Commit)
+		fmt.Printf("Built:        %s\n\n", Info.Date)
+		fmt.Printf("Go Version:   %s\n\n", Info.GoVersion)
+		fmt.Printf("OS/Arch:      %s/%s\n\n", runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("Built on:     %s\n\n", Info.BuildMachineOs)
+	},
 }
 
-func main() {
-	cmd.Execute()
+func init() {
+	rootCmd.AddCommand(versionCmd)
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// versionCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// versionCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

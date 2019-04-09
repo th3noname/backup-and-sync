@@ -29,6 +29,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+type VersionInformation struct {
+	Version        string
+	Commit         string
+	Date           string
+	GoVersion      string
+	BuildMachineOs string
+}
+
+var Info VersionInformation
+
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -37,6 +47,7 @@ var rootCmd = &cobra.Command{
 	Short: "Backup directories using restic and sync folders using rclone",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Fprintf(os.Stderr, "backup-and-sync version %s\n", Info.Version)
 		cmd.Help()
 		os.Exit(0)
 	},
