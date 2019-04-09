@@ -27,8 +27,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/th3noname/backup-and-sync/rclone"
-	"github.com/th3noname/backup-and-sync/restic"
 )
 
 var cfgFile string
@@ -39,39 +37,8 @@ var rootCmd = &cobra.Command{
 	Short: "Backup directories using restic and sync folders using rclone",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		if viper.IsSet("restic") {
-			var resticConf *restic.Config
-
-			err := viper.UnmarshalKey("restic", &resticConf)
-			if err != nil {
-				log.WithError(err).Error("Unmarshal restic configuration failed")
-				return
-			}
-
-			r := restic.New(resticConf)
-			err = r.Run()
-			if err != nil {
-				log.WithError(err).Error("restic execution failed")
-				return
-			}
-		}
-
-		if viper.IsSet("rclone") {
-			var rcloneConf *rclone.Config
-
-			err := viper.UnmarshalKey("rclone", &rcloneConf)
-			if err != nil {
-				log.WithError(err).Error("Unmarshal rclone configuration failed")
-				return
-			}
-
-			r := rclone.New(rcloneConf)
-			err = r.Run()
-			if err != nil {
-				log.WithError(err).Error("rclone execution failed")
-				return
-			}
-		}
+		cmd.Help()
+		os.Exit(0)
 	},
 }
 
@@ -85,8 +52,6 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
 	// Config file
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./backup.config)")
 }

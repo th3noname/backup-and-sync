@@ -21,6 +21,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -28,7 +29,8 @@ import (
 )
 
 // Version information
-const Version = "0.1.0"
+var Version string
+var Build string
 
 func init() {
 	// Log as text.
@@ -43,9 +45,9 @@ func init() {
 }
 
 func main() {
-	log.Infof("backup-and-sync %s", Version)
+	fmt.Fprintf(os.Stderr, "backup-and-sync version %s build %s\n", Version, Build)
 
 	cmd.Execute()
 
-	log.Info("done")
+	fmt.Fprintf(os.Stderr, "done\n")
 }
