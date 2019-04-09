@@ -8,10 +8,13 @@ At the moment the wrapper only includes the functionality needed for my use case
 
 To install backup-and-sync from source run the following commands
 
-```
+``` bash
 git clone https://github.com/th3noname/backup-and-sync.git
 
 cd backup-and-sync
+
+# fetch all dependencies
+go get -u ./src/...
 
 go run build.go
 ```
