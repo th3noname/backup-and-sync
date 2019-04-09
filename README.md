@@ -13,10 +13,14 @@ git clone https://github.com/th3noname/backup-and-sync.git
 
 cd backup-and-sync
 
-# fetch all dependencies
-go get -u ./src/...
-
 go run build.go
 ```
 
 The application is automatically cross-compiled for windows and linux (386 and amd64). The binaries are stored in the bin directory.
+
+If you're building outside of the GOPATH and have module support enabled the application should build without a problem. If you're building without module support you have to fetch the dependencies manually:
+
+``` bash
+# fetch all dependencies
+go get -u ./src/...
+```
