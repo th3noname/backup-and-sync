@@ -5,3 +5,4 @@
 *.so
 *.dylib
 backup-and-sync
+bin/*
