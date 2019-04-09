@@ -1,3 +1,12 @@
+report:
+  smtp-host: smtp.example.com
+  smtp-port: 123
+  smtp-user: foo
+  smtp-password: bar
+  recipients: [foo@bar.com]
+  subject-success: 
+  subject-error:
+
 restic:
   repositories:
     - repository: repoID
